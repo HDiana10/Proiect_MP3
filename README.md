@@ -1,5 +1,5 @@
 Task list:
-- modalitate prin care putem adauga melodii din surse online (verificat gadius)
+- modalitate prin care putem adauga melodii din surse online (verificat gladius)
 - mai multe tipuri deinterfata
 - cercetat alte interfete grafice (tkinter sucks)
 - optiune de creat playsists
