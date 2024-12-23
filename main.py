@@ -1,5 +1,3 @@
-from turtledemo.clock import current_day
-
 from graphics import AppGUI
 from music_functions import MusicControl, PlaylistManager
 

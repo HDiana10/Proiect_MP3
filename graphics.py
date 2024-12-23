@@ -179,10 +179,11 @@ class AppGUI:
         selected_song = self.Playlist.get(self.Playlist.curselection())
         self.song_name_label.config(text=selected_song)
         self.current_song_index = self.Playlist.curselection()[0]  # Actualizează indexul melodiei selectate
+
         # Actualizam obiectul MusicControl cu noul index
         self.music_control.current_song_index = self.current_song_index
-        self.music_control.play_music()
         self.PlayPauseButton.config(image = self.PlayPauseButton)
+        self.music_control.play_music()
 
     def toggle_play_pause(self):
         if self.is_playing:

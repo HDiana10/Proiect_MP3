@@ -22,9 +22,10 @@ class PlaylistManager:
             files = os.listdir(folder_path)  # Obține lista fișierelor din director
             for file in files:
                 if file.endswith(".mp3"):  # Adaugă doar fișierele MP3
-                    self.playlist.append(file)
+                    file_name_without_extension = os.path.splitext(file)[0]  # Elimină extensia
+                    self.playlist.append(file)  # Stochează numele complet în lista internă
                     if self.listbox:
-                        self.listbox.insert(END, file)
+                        self.listbox.insert(END, file_name_without_extension)  # Adaugă numele fără extensie
 
     def get_playlist(self):
         """Returnează lista completă de melodii"""
