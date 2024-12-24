@@ -1,184 +1,95 @@
-import os
-import threading
+from random import shuffle
+
 from pygame import mixer
-from tkinter import filedialog, END
-import random
+import os, random
 
-# **Clasa PlaylistManager - Gestionarea playlist-ului**
-class PlaylistManager:
-    def __init__(self):
-        self.playlist = []  # Lista de melodii
-        self.listbox = None  # Va fi conectat la Listbox-ul din GUI
-
-    def set_listbox(self, app_gui):
-        """Setează lista (Listbox) din GUI pentru actualizare"""
-        self.listbox = app_gui.Playlist
-
-    def add_music(self):
-        """Permite utilizatorului să adauge melodii dintr-un folder"""
-        folder_path = filedialog.askdirectory(title="Selectează un folder cu piese muzicale")
-        if folder_path:
-            os.chdir(folder_path)  # Schimbă directorul curent
-            files = os.listdir(folder_path)  # Obține lista fișierelor din director
-            for file in files:
-                if file.endswith(".mp3"):  # Adaugă doar fișierele MP3
-                    file_name_without_extension = os.path.splitext(file)[0]  # Elimină extensia
-                    self.playlist.append(file)  # Stochează numele complet în lista internă
-                    if self.listbox:
-                        self.listbox.insert(END, file_name_without_extension)  # Adaugă numele fără extensie
-
-    def get_playlist(self):
-        """Returnează lista completă de melodii"""
-        return self.playlist
-
-    def get_song(self, index):
-        """Returnează melodia de la un index specificat din playlist"""
-        if 0 <= index < len(self.playlist):
-            return self.playlist[index]
-        return None
+mixer.init()  # Inițializează mixer-ul pentru a reda muzica
 
 class MusicControl:
-    def __init__(self, app_gui, playlist_manager, current_song_index):
-        self.app_gui = app_gui
-        self.playlist_manager = playlist_manager
-        self.current_song_index = current_song_index
-        self.pause_time = -1
+    def __init__(self, playlist_manager, toggle_repeat, toggle_shuffle):
+        self.playlist_manager = playlist_manager  # Obiect pentru gestionarea playlist-urilor
+        self.repeat = toggle_repeat
+        self.shuffle = toggle_shuffle
+        self.pause_time = 0
         self.is_playing = False
-        self.song_duration = 0
-        self.stop_thread_event = threading.Event()  # Eveniment pentru a opri thread-ul
-        self.new_position = 0
-        mixer.init()  # Inițializează mixerul
-        self.is_slider_dragged = False  # Flag pentru a verifica dacă sliderul a fost mișcat manual
+        self.current_song = None
+        self.current_song_id = -1
+        self.current_playlist = None
 
-    def add_music(self):
-        """Adaugă muzică în playlist prin selectarea unui folder"""
-        self.playlist_manager.add_music()  # Apelează metoda din PlaylistManager
-        self.app_gui.update_playlist()  # Actualizează GUI-ul pentru a afișa playlist-ul actualizat
-
-    def play_music(self):
-        """Pornește redarea melodiei"""
-        self.new_position = 0
-        music_name = self.playlist_manager.get_song(self.current_song_index)
-
-        #print(f"Am redat piesa{music_name}\n")
-
-        if not music_name:  # Dacă nu există o piesă selectată
-            return
-
-        if self.pause_time > 0:
+    def play_song(self, song_id, playlist):
+        if self.pause_time != 0 and song_id == self.current_song_id and self.current_playlist == playlist:
             # Reluăm melodia de la timpul salvat
             mixer.music.unpause()
             self.pause_time = 0  # Resetăm timpul de pauză
         else:
-            # Încărcăm și redăm melodia de la început
-            mixer.music.load(music_name)
-            mixer.music.play()
-            self.song_duration = mixer.Sound(music_name).get_length()
+            self.current_song_id = song_id
+            self.current_playlist = playlist
 
-        # Schimb numele piesei curente
-        clean_name = os.path.splitext(music_name)[0]  # Elimină extensia .mp3
-        self.app_gui.song_name_label.config(text=f"{clean_name}")
-        self.app_gui.TimeScale.config(from_=0, to=self.song_duration)
+            # Obține calea fișierului melodiilor din playlist
+            self.current_song = self.playlist_manager.get_song(song_id, playlist)
+            print(f"Music name: {self.current_song}")
 
-        self.is_playing = True
+            mixer.music.load(self.current_song)  # Încarcă fișierul audio
+            mixer.music.play()  # Redă melodia
+            self.is_playing = True
+            return os.path.splitext(os.path.basename(self.current_song))[0]
 
-        # Inițializează progresul într-un thread dedicat
-        self.stop_thread_event.clear()
-        # Crează și pornește noi thread-uri
-        self.time_scale_thread = threading.Thread(target=self.update_time_scale, daemon=True)
-        self.time_scale_thread.start()
-
-
-        # Actualizează selecția în playlist
-        self.app_gui.Playlist.select_clear(0, END)
-        self.app_gui.Playlist.select_set(self.current_song_index)
-
-    def pause_music(self):
-        """Pune muzica pe pauză"""
+    def pause_song(self):
         mixer.music.pause()
         self.pause_time = mixer.music.get_pos() / 1000  # Salvează timpul curent al melodiei
         self.is_playing = False
-        self.stop_thread_event.set()  # Oprește thread-ul de actualizare a progresului
 
-    def stop_music(self):
-        """Oprește redarea muzicii"""
+    def stop_song(self):
+        self.current_song = None
+        self.current_song_id = None
         mixer.music.stop()
-        self.is_playing = False
-        self.stop_thread_event.set()  # Oprește thread-ul de actualizare a progresului
 
-        # Schimbă imaginea butonului de la Pause la Play
-        self.app_gui.PlayPauseButton.config(image=self.app_gui.PlayButton)  # PlayButton este imaginea de play
+    def next_song(self):
 
-        # Schimb numele piesei curente
-        self.app_gui.song_name_label.config(text="Nici o melodie selectată")
+        length = len(self.playlist_manager.playlists[self.current_playlist]) - 1
 
-        # Actualizează selecția în playlist
-        self.app_gui.Playlist.select_clear(0, END)
+        if self.shuffle:
+            song_index = random.randint(0, length)  # Dacă shuffle este activ
+            while song_index == self.current_song_id:
+                song_index = random.randint(0, length)
+            self.current_song_id = song_index
 
-        # Resetează TimeScale-ul și eticheta de timp
-        self.app_gui.TimeScale.set(0)
-        self.app_gui.time_label.config(text=f"00:00 / 00:00")
+        elif self.repeat == 1:
+            self.current_song_id = self.current_song_id + 1
+            if self.current_song_id == length:  # verify if we reached the end of the playlist
+                self.current_song_id = 0
 
-    def next_music(self):
-        """Redă următoarea melodie din playlist"""
-        self.app_gui.PlayPauseButton.config(image=self.app_gui.PauseButton)
-        if self.current_song_index < len(self.playlist_manager.get_playlist()) - 1:
-            self.current_song_index += 1
-        else:
-            self.current_song_index = 0
-        self.play_music()
-        #self.app_gui.toggle_play_pause()
+        self.current_song_id, self.current_song= self.playlist_manager.get_next_song(self.current_song_id, self.current_playlist)
+        mixer.music.load(self.current_song)
+        mixer.music.play()
 
-    def previous_music(self):
-        """Redă melodia anterioară din playlist"""
-        self.app_gui.PlayPauseButton.config(image=self.app_gui.PauseButton)
-        if self.current_song_index > 0:
-            self.current_song_index -= 1
-        else:
-            self.current_song_index = len(self.playlist_manager.get_playlist()) - 1
-        self.play_music()
-        #self.app_gui.toggle_play_pause()
+        return self.current_song_id, os.path.splitext(os.path.basename(self.current_song))[0]
+
+    def previous_song(self):
+        self.current_song_id, self.current_song = self.playlist_manager.get_previous_song(self.current_song_id, self.current_playlist)
+        mixer.music.load(self.current_song)
+        mixer.music.play()
+
+        return self.current_song_id, os.path.splitext(os.path.basename(self.current_song))[0]
 
     def on_song_end(self):
-        """Funcția care se apelează când piesa ajunge la final"""
-        print("Piesa s-a terminat!")
-        self.app_gui.PlayPauseButton.config(image=self.app_gui.PlayButton)
-        if self.app_gui.shuffle:
-            song_index = random.randint(0, len(self.playlist_manager.get_playlist()) - 1)# Dacă shuffle este activ
-            while song_index == self.current_song_index:
-                song_index = random.randint(0, len(self.playlist_manager.get_playlist()) - 1)
-            self.current_song_index = song_index
-            self.play_music()
-        elif self.app_gui.repeat:  # Dacă nu este activat repeat
-            self.next_music()  # Redă piesa următoare
-         # Reia piesa curentă
-
-    def on_time_scale_move(self, event):
-        """Când se mișcă cursorul TimeScale, piesa va începe de la timpul respectiv"""
-        self.new_position = self.app_gui.TimeScale.get()  # Obține noua poziție a sliderului
-        self.set_song_position()  # Setează poziția piesei
-
-    def set_song_position(self):
-        """Setează poziția piesei și o reîncepe de la acea poziție"""
-        #self.stop_thread_event.set()  # Oprește thread-ul de actualizare a progresului
-        mixer.music.play(start=self.new_position)
-        # Inițializează și rulează un thread pentru actualizarea progresului
-        threading.Thread(target=self.update_time_scale, daemon=True).start()
+        print(f"Am ajuns la finalul cantecului {self.current_song}\n repeat = {self.repeat} and shuffle = {self.shuffle}")
+        if self.shuffle or self.repeat == 1:
+            return self.next_song()
+        elif self.repeat == 2:
+            return self.current_song_id, self.play_song(self.current_song_id, self.current_playlist)
 
 
-    def update_time_scale(self):
-        """Actualizează cursorul TimeScale și eticheta cu timpul curent"""
-        if mixer.music.get_busy():  # Verifică dacă piesa este în continuare redată
-            current_pos = self.new_position + (mixer.music.get_pos() / 1000)  # Timpul curent în secunde
-            current_min = int(current_pos // 60)
-            current_sec = int(current_pos % 60)
-            song_min = int(self.song_duration // 60)
-            song_sec = int(self.song_duration % 60)
+    def get_song_duration(self):
+        return mixer.Sound(self.current_song).get_length()
 
-            self.app_gui.time_label.config(text=f"{current_min:02}:{current_sec:02} / {song_min:02}:{song_sec:02}")
-            self.app_gui.TimeScale.set(current_pos)
+    def get_current_time(self):
+        return mixer.music.get_pos() / 1000
 
-            if current_min == song_min and current_sec == song_sec:
-                self.on_song_end()
-            # Apelează din nou funcția de actualizare după 1 secundă
-            self.app_gui.root.after(1000, self.update_time_scale)
+    def update_song_position(self, time):
+        if self.is_playing:
+            mixer.music.stop()
+            mixer.music.play(start = time)
+
+        else:
+            self.pause_time = time

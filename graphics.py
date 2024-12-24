@@ -1,228 +1,448 @@
-from tkinter import *
+import customtkinter as ctk
+from music_functions import MusicControl
+import os
 from PIL import Image, ImageTk
-from pygame import mixer
-from music_functions import MusicControl, PlaylistManager
 
-
-class AppGUI:
+class AppGui:
     def __init__(self, playlist_manager):
-        self.root = Tk()
-        self.root.title("MP3 Player")  # Setează titlul ferestrei
-        self.root.geometry("600x700")  # Dimensiunea ferestrei mp3-ului
-        self.root.configure(background="pink")
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("dark-blue")
+        self.root = ctk.CTk()
         self.playlist_manager = playlist_manager
-        self.current_song_index = 0
-        self.music_control = MusicControl(self, self.playlist_manager, self.current_song_index)
+        self.current_playlist = "Default"  # Initialize the current playlist
+        self.current_song = None
+        self.song_index = 0
+        self.song_duration = 0
+        self.toggle_play_pause = 0
+        self.shuffle = 0
+        self.repeat = 0
+        self.music_control = MusicControl(playlist_manager, self.repeat, self.shuffle)
+        self.update_id = None  # Variabilă pentru stocarea ID-ului after
+        self.const_time = 0
+        #interface
+        self.menu = None
+        self.playlist_frame = None
+        self.center_label = None
+        self.center_frame = None
+        self.TimeScale = None
+        self.SongLabel = None
+        self.TimeLabel = None
 
-        self.is_playing = False  # Starea implicită este că muzica nu rulează
+        # images
+        self.play_image = Image.open("images/play_button.png").resize((120, 120))
+        self.play_image = ImageTk.PhotoImage(self.play_image)
 
+        self.pause_image = Image.open("images/pause_button.png").resize((120, 120))
+        self.pause_image = ImageTk.PhotoImage(self.pause_image)
 
-        self.shuffle = False
-        self.repeat = False
+        self.shuffle_image_on = Image.open("images/shuffle_button_on.png").resize((120, 120))
+        self.shuffle_image_on = ImageTk.PhotoImage(self.shuffle_image_on)
 
-        #imagini play/pause
-        self.PlayButton = Image.open("images/play_button.png").resize((80, 80))
-        self.PlayButton = ImageTk.PhotoImage(self.PlayButton)
-        self.PauseButton = Image.open("images/pause_button.png").resize((80, 80))
-        self.PauseButton = ImageTk.PhotoImage(self.PauseButton)
+        self.shuffle_image_off = Image.open("images/shuffle_button_off.png").resize((120, 120))
+        self.shuffle_image_off = ImageTk.PhotoImage(self.shuffle_image_off)
 
-        #imagini shuffle
-        self.ShuffleButtonON = Image.open("images/shuffle_button_on.png").resize((80, 80))
-        self.ShuffleButtonON = ImageTk.PhotoImage(self.ShuffleButtonON)
-        self.ShuffleButtonOFF = Image.open("images/shuffle_button_off.png").resize((80, 80))
-        self.ShuffleButtonOFF = ImageTk.PhotoImage(self.ShuffleButtonOFF)
+        self.repeat_image_on = Image.open("images/repeat_button_on.png").resize((120, 120))
+        self.repeat_image_on = ImageTk.PhotoImage(self.repeat_image_on)
 
-        #imagini repeat
-        self.RepeatButtonON = Image.open("images/repeat_button_on.png").resize((80, 80))
-        self.RepeatButtonON = ImageTk.PhotoImage(self.RepeatButtonON)
-        self.RepeatButtonOFF = Image.open("images/repeat_button_off.png").resize((80, 80))
-        self.RepeatButtonOFF = ImageTk.PhotoImage(self.RepeatButtonOFF)
+        self.repeat_image_off = Image.open("images/repeat_button_off.png").resize((120, 120))
+        self.repeat_image_off = ImageTk.PhotoImage(self.repeat_image_off)
 
-        self.create_widgets()
-        self.create_buttons()
+        self.stop_image = Image.open("images/stop_button.png").resize((120, 120))
+        self.stop_image = ImageTk.PhotoImage(self.stop_image)
 
-    def create_widgets(self):
-        # Creăm logo care apare langa titlul ferestrei
-        image_icon = PhotoImage(file="images/logo.png")
-        self.root.iconphoto(False, image_icon)
-        self.create_background()
-        self.create_scroll()
-        self.create_scale()
+        self.previous_image = Image.open("images/previous_button.png").resize((120, 120))
+        self.previous_image = ImageTk.PhotoImage(self.previous_image)
 
-    def create_background(self):
-        # Cream background-ul
-        self.Bg_image = Image.open("images/bg_mp3.png")
-        self.Bg_image = self.Bg_image.resize((600, 300))
-        self.BgImage = ImageTk.PhotoImage(self.Bg_image)
-        Label(self.root, image=self.BgImage).place(x=0, y=0)
-        lower_frame = Frame(self.root, background="white", width=600, height=150)
-        lower_frame.place(x=0, y=300)
+        self.next_image = Image.open("images/next_button.png").resize((120, 120))
+        self.next_image = ImageTk.PhotoImage(self.next_image)
 
-    def create_scroll(self):
-        Frame_Music = Frame(self.root, bd=2, relief=RIDGE, background="purple")
-        Frame_Music.place(x=0, y=450, width=600, height=300)
+        # Butoane
+        self.TogglePlayButton = None
+        self.ToggleShuffleButton = None
+        self.ToggleRepeatButton = None
+        self.NextButton = None
+        self.PreviousButton = None
+        self.StopButton = None
 
-        Button(self.root,
-               cursor="hand2",
-               text="Browse Music",
-               height=1,
-               font=("Times new roman", 12, "bold"),
-               fg="pink",
-               bg="white",
-               bd=(2, "pink"),
-               command=self.music_control.add_music).place(x=250, y=415)
+        self.layout()
 
-        Scroll = Scrollbar(Frame_Music, orient=VERTICAL)
+    def layout(self):
+        self.root.geometry("1200x700")
+        self.root.title("MP3 Player")
 
-        self.Playlist = Listbox(Frame_Music,
-                                width=100,
-                                height=100,
-                                font=("Times new roman", 14),
-                                bg="white",
-                                fg="pink",
-                                selectmode=SINGLE,
-                                cursor="hand2",
-                                bd=0,
-                                yscrollcommand=Scroll.set)
+        # Configurare grilă pentru root
+        self.root.columnconfigure(0, weight=1)  # Sidebar (coloana 0)
+        self.root.columnconfigure(1, weight=3)  # Menu și center (coloana 1)
+        self.root.rowconfigure(0, weight=4)  # Center (rândul 0)
+        self.root.rowconfigure(1, weight=0)  # Menu (rândul 1)
 
-        self.Playlist.config(selectbackground="purple", selectforeground="white")
-        self.Playlist.bind("<<ListboxSelect>>", self.on_select_song)
+        self.sidebar_setup()
+        self.menu_setup()
+        self.center_setup()
 
-        Scroll.config(command=self.Playlist.yview)
-        Scroll.pack(side=RIGHT, fill=Y)
-        self.Playlist.pack(side=LEFT, fill=BOTH, expand=True)
+    def sidebar_setup(self):
+        # Creează un sidebar
+        sidebar = ctk.CTkFrame(self.root, fg_color="#A20582")
+        sidebar.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=10, pady=10)
 
-    def create_scale(self):
-        # Adaugă un Scale pentru cursorul de timp fără a arăta valoarea
-        self.TimeScale = Scale(self.root, from_=0, to=100, orient=HORIZONTAL, length=350, sliderlength=10, troughcolor="purple", bg="white", width = 20, showvalue=0, borderwidth=0)
-        self.TimeScale.bind("<ButtonRelease-1>", self.music_control.on_time_scale_move)
-        self.TimeScale.place(x=200, y=250)
+        # Configurați grila pentru sidebar
+        sidebar.rowconfigure(0, weight=0)  # Rândul pentru titlu
+        sidebar.rowconfigure(1, weight=0)  # Rândul pentru butoane
+        sidebar.rowconfigure(2, weight=1)  # Rândul pentru playlist_frame (extinde maxim)
+        sidebar.columnconfigure(0, weight=1)  # Coloana unică
 
-        # Adaugă un Label pentru a afișa numele piesei
-        self.song_name_label = Label(self.root, text="Nici o melodie selectată", font=("Times New Roman", 14), fg="purple")
-        self.song_name_label.place(x=200, y=220)
+        # Titlu sidebar
+        title_sidebar = ctk.CTkLabel(
+            sidebar,
+            text="Playlists",
+            font=("Roboto", 24),
+            anchor="center"
+        )
+        title_sidebar.grid(row=0, column=0, pady=10)
 
-        # Adaugă un Label pentru a afișa timpul curent (ex: 00:00 / 03:45)
-        self.time_label = Label(self.root, text="00:00 / 00:00", font=("Times New Roman", 12), bg="white", fg="purple")
-        self.time_label.place(x=465, y=220)
+        # Container pentru butoane
+        button_container = ctk.CTkFrame(sidebar, fg_color="transparent")
+        button_container.grid(row=1, column=0, pady=5)
 
+        # Configurați grila pentru containerul de butoane
+        button_container.columnconfigure(0, weight=0)
+        button_container.columnconfigure(1, weight=0)
 
-    def create_buttons(self):
+        # Butoane în container
+        button_create_playlist = ctk.CTkButton(
+            button_container,
+            text="Create Playlist",
+            command=self.create_playlist_prompt,
+            fg_color="white",
+            text_color="black",
+            hover_color="magenta",
+        )
+        button_create_playlist.grid(row=0, column=0, padx=(0, 5))
 
-        # Creează butonul Play/Pause
-        self.PlayPauseButton = Button(self.root,
-                                      image=self.PlayButton,
-                                      cursor="hand2",
-                                      bd=0,
-                                      bg="white",
-                                      command=self.toggle_play_pause)
-        self.PlayPauseButton.place(x=300, y=330)
+        button_add_song_default = ctk.CTkButton(
+            button_container,
+            text="Add Songs to Default",
+            command=self.add_songs,
+            fg_color="white",
+            text_color="black",
+            hover_color="magenta",
+        )
+        button_add_song_default.grid(row=0, column=1, padx=(5, 0))
 
-        # Butonul de stop
-        self.Stop_button = Image.open("images/stop_button.png")
-        self.Stop_button = self.Stop_button.resize((80, 80))
-        self.ButtonStop = ImageTk.PhotoImage(self.Stop_button)
-        Button(self.root,
-               cursor="hand2",
-               image=self.ButtonStop,
-               bg="white",
-               bd=0,
-               command=self.music_control.stop_music).place(x=220, y=330)
+        # Creează un scrollbar pentru a afișa playlisturile
+        self.playlist_frame = ctk.CTkScrollableFrame(sidebar, width=280, height=560, fg_color="#ffb3d7")
+        self.playlist_frame.grid(row=2, column=0, sticky="nsew", pady=(10, 10), padx=10)
 
-        # Butonul de Next
-        self.Next_button = Image.open("images/next_button.png")
-        self.Next_button = self.Next_button.resize((80, 80))
-        self.ButtonNext = ImageTk.PhotoImage(self.Next_button)
-        Button(self.root,
-               cursor="hand2",
-               image=self.ButtonNext,
-               bg="white",
-               bd=0,
-               command=self.music_control.next_music).place(x=380, y=330)
+        # Actualizează afisarea playlisturilor
+        self.update_playlists_display()
 
-        # Butonul de Previous
-        self.Previous_button = Image.open("images/previous_button.png")
-        self.Previous_button = self.Previous_button.resize((80, 80))
-        self.ButtonPrevious = ImageTk.PhotoImage(self.Previous_button)
-        Button(self.root,
-               cursor="hand2",
-               image=self.ButtonPrevious,
-               bg="white",
-               bd=0,
-               command=self.music_control.previous_music).place(x=140, y=330)
+    def add_songs(self):
+        self.playlist_manager.add_song_to_default()
+        self.update_center()
 
-        # Butonul de Shuffle
-        self.ShuffleButton = Button(self.root,
-                                      image=self.ShuffleButtonOFF,
-                                      cursor="hand2",
-                                      bd=0,
-                                      bg="white",
-                                      command=self.toggle_shuffle)
-        self.ShuffleButton.place(x=60, y=330)
+    def create_playlist_prompt(self):
+        # Afișează o fereastră pentru a introduce numele playlist-ului
+        dialog = ctk.CTkInputDialog(text="Enter playlist name:", title="Create Playlist")
+        playlist_name = dialog.get_input()
 
-        # Butonul de Repeat
-        self.RepeatButton = Button(self.root,
-                                      image=self.RepeatButtonOFF,
-                                      cursor="hand2",
-                                      bd=0,
-                                      bg="white",
-                                      command=self.toggle_repeat)
-        self.RepeatButton.place(x=460, y=330)
+        if playlist_name:
+            self.playlist_manager.create_playlist(playlist_name)
+            self.update_playlists_display()
 
-    def update_playlist(self):
-        """Actualizează lista de redare în GUI"""
-        for song in self.playlist_manager.get_playlist():
-            self.Playlist.insert(END, song)  # Adaugă fiecare melodie în listă
+    def update_playlists_display(self):
+        print("Hello, ar trebui sa afisez cantecele acum")
+        # sterge frame-ul existent
+        for widget in self.playlist_frame.winfo_children():
+            widget.destroy()
 
-    def on_select_song(self, event):
-        """Actualizează eticheta cu numele melodiei selectate"""
-        selected_song = self.Playlist.get(self.Playlist.curselection())
-        self.song_name_label.config(text=selected_song)
-        self.current_song_index = self.Playlist.curselection()[0]  # Actualizează indexul melodiei selectate
+        # Adauga un label pentru fiecare playlist
+        for playlist in self.playlist_manager.playlists:
+            label = ctk.CTkLabel(
+                self.playlist_frame,
+                text=playlist,
+                font=("Helvetica", 16),
+                fg_color="transparent",
+                text_color="Purple",
+                anchor="w" # aliniaza textul la stanga
+            )
+            label.pack(fill="x", padx=10, pady=5)
+            label.bind("<Button-1>", lambda event, p=playlist: self.select_playlist(p))  # Asociază clicul stânga
 
-        # Actualizam obiectul MusicControl cu noul index
-        self.music_control.current_song_index = self.current_song_index
-        self.PlayPauseButton.config(image = self.PlayPauseButton)
-        self.music_control.play_music()
+            # Adaugă efect hover
+            label.bind("<Enter>", lambda event, l=label: l.configure(fg_color="pink"))  # Schimbă culoarea de fundal
+            label.bind("<Leave>", lambda event, l=label: l.configure(fg_color="transparent"))  # Revine la fundal transparent
 
-    def toggle_play_pause(self):
-        if self.is_playing:
-            # funtie de pause
-            self.is_playing = False
-            self.PlayPauseButton.config(image = self.PlayButton)
-            self.music_control.pause_music()
-        else:
-            # functie de play
-            self.is_playing = True
-            self.PlayPauseButton.config(image = self.PauseButton)
-            self.music_control.play_music()
+    def select_playlist(self, playlist_name):
+        # Functia de selectie pentru un playlist
+        self.current_playlist = playlist_name  # Setează playlistul selectat
+        print(f"Playlist selected: {self.current_playlist}")
+        self.update_center()
+
+    def center_setup(self):
+        # Creează secțiunea "center"
+        center = ctk.CTkFrame(self.root, fg_color="#C7439D")
+        center.grid(row=0, column=1, sticky="nsew", pady=10, padx=(0, 10))  # Poziționat sub menu
+        center.grid_propagate(False)
+
+        # Configurează grila pentru "center"
+        center.rowconfigure(0, weight=0)  # Rândul pentru label
+        center.rowconfigure(1, weight=1)  # Rândul pentru frame
+        center.columnconfigure(0, weight=1)  # Coloană unică, extindere pe orizontală
+
+        # Adaugă un label pentru secțiunea "center"
+        self.center_label = ctk.CTkLabel(center, text="Playlist: Default", font=("Helvetica", 24))
+        self.center_label.grid(row=0, column=0, pady=10)
+
+        # Creează un container pentru lista de melodii
+        self.center_frame = ctk.CTkScrollableFrame(center, fg_color="#ffb3d7")
+        self.center_frame.grid(row=1, column=0, sticky="nsew", pady=(0, 10), padx=10)
+
+        # Actualizează lista de melodii din playlistul curent
+        self.update_center()
+
+    def update_center(self):
+        # Ștergeți widgeturile existente
+        for widget in self.center_frame.winfo_children():
+            widget.destroy()
+
+        # Actualizează titlul playlistului curent
+        self.center_label.configure(text=f"Playlist: {self.current_playlist}")
+
+        # Adăugăm fiecare melodie
+        for song_id, song_name in self.playlist_manager.playlists[self.current_playlist]:
+            song_button = ctk.CTkButton(
+                self.center_frame,
+                text=os.path.splitext(song_name)[0],  # Afișează doar numele fișierului
+                font=("Helvetica", 16),
+                anchor="w",
+                fg_color=("transparent" if song_id != self.song_index else "#75025D"),
+                hover_color="magenta",
+                command=lambda s_id=song_id: self.select_song(s_id)
+            )
+            song_button.pack(fill="x", padx=10, pady=(5, 0))
+
+    def select_song(self, song_id):
+        # Actualizează melodia selectată
+        self.song_index = song_id
+        self.current_song = self.playlist_manager.Default[song_id]
+        print(f"Song selected: {os.path.basename(self.current_song)}")
+        self.toggle_play()
+        self.update_center()  # Reîmprospătează lista pentru a evidenția selecția
+
+    def menu_setup(self):
+        # Creează un meniu
+        menu = ctk.CTkFrame(self.root, fg_color="#75025D")
+        menu.grid(row=1, column=1, sticky="nsew", padx=(0,10), pady=(0,10))  # Poziționat în partea de sus
+        menu.grid_propagate(False)
+
+        # Adaugă un label în meniu
+        self.SongLabel = ctk.CTkLabel(menu, text="No song playing", font=("Helvetica", 20))
+        self.SongLabel.pack(pady=(50, 0))
+
+        self.TimeLabel = ctk.CTkLabel(menu, text="00:00 / 00:00", font=("Helvetica", 20))
+        self.TimeLabel.pack(pady=(10, 5))
+        # Time Scale
+        self.TimeScale = ctk.CTkSlider(
+            menu,
+            from_=0,
+            to=100,
+            width=600,
+            fg_color="pink",
+            progress_color="magenta",
+            button_color="purple",
+            button_hover_color="purple"
+        )
+        # Asociază evenimentul de eliberare a click-ului cu funcția `update_time_on_release`
+        self.TimeScale.bind("<ButtonRelease-1>", self.update_time)
+
+        self.TimeScale.pack(pady=(5, 5))
+        self.TimeScale.set(0)
+
+        self.buttons(menu)
+
+    def update_time_scale(self):
+        """Actualizează scala de timp automat."""
+        current_time = self.music_control.get_current_time() + self.const_time
+        self.TimeScale.set(current_time)
+
+        current_min = int(current_time // 60)
+        current_sec = int(current_time % 60)
+        song_min = int(self.song_duration // 60)
+        song_sec = int(self.song_duration % 60)
+
+        self.TimeLabel.configure(text=f"{current_min:02}:{current_sec:02} / {song_min:02}:{song_sec:02}")
+
+        # Verifică dacă am ajuns la final
+        if current_min == song_min and current_sec == song_sec:
+            # Evită să resetezi TimeScale la un timp anterior
+            self.song_index, self.current_song = self.music_control.on_song_end()
+            self.set_time_scale()
+            self.update_center()
+            return  # Oprește bucla de actualizare
+
+        self.update_id = self.root.after(1000, self.update_time_scale)
+
+    def stop_time_scale_update(self):
+        """Anulează actualizarea automată a TimeScale."""
+        if self.update_id is not None:
+            self.root.after_cancel(self.update_id)
+            self.update_id = None
+
+    def update_time(self, event=None):
+        """Actualizează timpul piesei la eliberarea slider-ului."""
+        self.const_time = self.TimeScale.get()  # Preia valoarea curentă a slider-ului
+
+        # Dezactivează actualizarea automată temporar
+        self.stop_time_scale_update()  # Anulează actualizarea TimeScale
+
+        # Actualizează poziția piesei
+        self.music_control.update_song_position(self.const_time)
+
+        # Reîmprospătează label-ul și slider-ul
+        current_min = int(self.const_time // 60)
+        current_sec = int(self.const_time % 60)
+        song_min = int(self.song_duration // 60)
+        song_sec = int(self.song_duration % 60)
+
+        self.TimeLabel.configure(text=f"{current_min:02}:{current_sec:02} / {song_min:02}:{song_sec:02}")
+
+        # Repornim actualizarea automată după modificarea manuală
+        self.update_time_scale()
+
+    def set_time_scale(self):
+        """Setează scala de timp pentru noua piesă."""
+        self.song_duration = self.music_control.get_song_duration()
+        self.SongLabel.configure(text=self.current_song)
+        self.TimeLabel.configure(text=f"00:00 / {int(self.song_duration // 60):02}:{int(self.song_duration % 60):02}")
+        self.TimeScale.configure(from_=0, to=self.song_duration)
+        self.const_time = 0
+        self.TimeScale.set(0)
+
+        # Pornește actualizarea automată a slider-ului
+        self.update_time_scale()
+
+    def buttons(self, menu):
+        # Creează un subframe pentru butoane
+        button_frame = ctk.CTkFrame(menu, fg_color="transparent")
+        button_frame.pack(pady=(0, 30))  # Adăugăm un pic de spațiu între label și butoane
+
+        # Încarcă imaginea pentru buton
+
+        # BUTONUL DE SHUFFLE
+        self.ToggleShuffleButton = ctk.CTkButton(master=button_frame,
+                                                image=self.shuffle_image_off,
+                                                width=100, height=100,
+                                                command=self.toggle_shuffle,
+                                                text="", fg_color="transparent",
+                                                hover_color="#13060d")
+        self.ToggleShuffleButton.grid(row=0, column=0, padx=(5,0))
+
+        # BUTONUL DE PREVIOUS
+        self.PreviousButton = ctk.CTkButton(master=button_frame,
+                                         image=self.previous_image,
+                                         width=120, height=120,
+                                         command=self.previous_music,
+                                         text="", fg_color="transparent",
+                                         hover_color="#13060d")
+        self.PreviousButton.grid(row=0, column=1, padx=(5,0))
+
+        # BUTONUL DE STOP
+        self.StopButton = ctk.CTkButton(master=button_frame,
+                                                   image=self.stop_image,
+                                                   width=120, height=120,
+                                                   command=self.stop,
+                                                   text="", fg_color="transparent",
+                                                   hover_color="#13060d")
+        self.StopButton.grid(row=0, column=2, padx=(5,0))
+
+        # BUTONUL PLAY/PAUSE
+        self.TogglePlayButton = ctk.CTkButton(master=button_frame,
+                                         image=self.play_image,
+                                         width=120, height=120,
+                                         command=self.toggle_play,
+                                         text="", fg_color="transparent",
+                                         hover_color="#13060d")
+        self.TogglePlayButton.grid(row=0, column=3, padx=(5,0))
+
+        # BUTONUL DE NEXT
+        self.NextButton = ctk.CTkButton(master=button_frame,
+                                            image=self.next_image,
+                                            width=120, height=120,
+                                            command=self.next_music,
+                                            text="", fg_color="transparent",
+                                            hover_color="#13060d")
+        self.NextButton.grid(row=0, column=4, padx=(0,0))
+
+        # BUTONUL DE REPEAT
+        self.ToggleRepeatButton = ctk.CTkButton(master=button_frame,
+                                                   image=self.repeat_image_off,
+                                                   width=120, height=120,
+                                                   command=self.toggle_repeat,
+                                                   text="", fg_color="transparent",
+                                                   hover_color="#13060d")
+        self.ToggleRepeatButton.grid(row=0, column=5, padx=5)
 
     def toggle_shuffle(self):
         if self.shuffle:
-            self.shuffle = False
-            self.ShuffleButton.config(image = self.ShuffleButtonOFF)
-            print("Shuffle is OFF\n")
+            self.shuffle = self.music_control.shuffle = False
+            self.ToggleShuffleButton.configure(image=self.shuffle_image_off)
         else:
-            self.shuffle = True
+            self.shuffle = self.music_control.shuffle = True
+            self.ToggleShuffleButton.configure(image=self.shuffle_image_on)
             self.repeat = False
-            self.ShuffleButton.config(image=self.ShuffleButtonON)
-            self.RepeatButton.config(image = self.RepeatButtonOFF)
-            print("Shuffle is ON\n")
-        self.music_control.shuffle = self.shuffle
+            self.ToggleRepeatButton.configure(image=self.repeat_image_off)
 
     def toggle_repeat(self):
-        if self.repeat:
-            self.repeat = False
-            print("Repeat is OFF\n")
-            self.RepeatButton.config(image = self.RepeatButtonOFF)
-        else:
-            self.repeat = True
+        if self.repeat == 1:
+            self.repeat = self.music_control.repeat = 0
+            self.ToggleRepeatButton.configure(image=self.repeat_image_off)
+        elif self.repeat == 0:
+            self.repeat = self.music_control.repeat = 1
+            self.ToggleRepeatButton.configure(image=self.repeat_image_on)
             self.shuffle = False
-            self.RepeatButton.config(image=self.RepeatButtonON)
-            self.ShuffleButton.config(image = self.ShuffleButtonOFF)
-            print("Repeat is ON\n")
-        #self.music_control.repeat = self.repeat
+            self.ToggleShuffleButton.configure(image=self.shuffle_image_off)
+
+    def toggle_play(self):
+        if self.toggle_play_pause:
+            # are rol de pause
+            self.toggle_play_pause = False
+            print("Paused")
+            self.music_control.pause_song()
+            self.stop_time_scale_update()  # Anulează actualizarea TimeScale
+            self.TogglePlayButton.configure(image=self.play_image)
+        else:
+            # are rol de play
+            self.toggle_play_pause = True
+            self.current_song = self.music_control.play_song(self.song_index, self.current_playlist)
+            self.TogglePlayButton.configure(image=self.pause_image)
+            self.set_time_scale()
+
+    def next_music(self):
+        self.song_index, self.current_song = self.music_control.next_song()
+        self.update_center()
+        self.set_time_scale()
+
+    def previous_music(self):
+        self.song_index, self.current_song = self.music_control.previous_song()
+        self.update_center()
+        self.set_time_scale()
+
+    def stop(self):
+        self.TogglePlayButton.configure(image=self.play_image)
+        self.ToggleShuffleButton.configure(image=self.shuffle_image_off)
+        self.ToggleRepeatButton.configure(image=self.repeat_image_off)
+        self.toggle_play_pause = False
+        self.repeat = False
+        self.shuffle = False
+        self.current_song = os.path.basename(self.playlist_manager.Default[0])
+        self.song_index = 0
+        self.stop_time_scale_update()  # Anulează actualizarea TimeScale
+        self.current_playlist = "Default"
+        self.SongLabel.configure(text="Niciun cantec selectat")
+        self.TimeScale.set(0)
+        self.TimeLabel.configure(text="00:00 / 00:00")
+        self.music_control.stop_song()
+        self.update_center()
 
     def run(self):
-        """Pornește aplicația"""
         self.root.mainloop()

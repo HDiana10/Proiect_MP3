@@ -1,17 +1,12 @@
-from graphics import AppGUI
-from music_functions import MusicControl, PlaylistManager
+from graphics import AppGui
+from playlist_manager import PlaylistManager
 
 def main():
-    # Inițializăm managerul de playlist
-    playlist_manager = PlaylistManager()  # Corectat aici
+    # Creează instanța de MusicStorage
+    music_storage = PlaylistManager()
 
-    current_song_index = 0
-
-    # Creăm interfața grafică
-    app_gui = AppGUI(playlist_manager)
-
-    # Creăm controlerul muzicii
-    music_control = MusicControl(app_gui, playlist_manager, current_song_index)
+    # Creează instanțele pentru AppGui și MusicControl
+    app_gui = AppGui(music_storage)
 
     # Rulăm aplicația
     app_gui.run()
