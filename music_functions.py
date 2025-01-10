@@ -1,5 +1,3 @@
-from random import shuffle
-
 from pygame import mixer
 import os, random
 
@@ -19,7 +17,8 @@ class MusicControl:
     def play_song(self, song_id, playlist):
         if self.pause_time != 0 and song_id == self.current_song_id and self.current_playlist == playlist:
             # Reluăm melodia de la timpul salvat
-            mixer.music.unpause()
+            print(f"Pause time: {self.pause_time}")
+            mixer.music.play(start=self.pause_time)
             self.pause_time = 0  # Resetăm timpul de pauză
         else:
             self.current_song_id = song_id
@@ -34,9 +33,13 @@ class MusicControl:
             self.is_playing = True
             return os.path.splitext(os.path.basename(self.current_song))[0]
 
+    @staticmethod
+    def music_is_playing():
+        return mixer.music.get_busy()
+
     def pause_song(self):
         mixer.music.pause()
-        self.pause_time = mixer.music.get_pos() / 1000  # Salvează timpul curent al melodiei
+        self.pause_time = mixer.music.get_pos() / 1000  # Salvează timpul curent al melodiei - in secunde
         self.is_playing = False
 
     def stop_song(self):
@@ -54,12 +57,12 @@ class MusicControl:
                 song_index = random.randint(0, length)
             self.current_song_id = song_index
 
-        elif self.repeat == 1:
+        else:
             self.current_song_id = self.current_song_id + 1
-            if self.current_song_id == length:  # verify if we reached the end of the playlist
+            if self.current_song_id == length:
                 self.current_song_id = 0
 
-        self.current_song_id, self.current_song= self.playlist_manager.get_next_song(self.current_song_id, self.current_playlist)
+        self.current_song = self.playlist_manager.get_song(self.current_song_id, self.current_playlist) # tuple
         mixer.music.load(self.current_song)
         mixer.music.play()
 
@@ -83,7 +86,8 @@ class MusicControl:
     def get_song_duration(self):
         return mixer.Sound(self.current_song).get_length()
 
-    def get_current_time(self):
+    @staticmethod
+    def get_current_time():
         return mixer.music.get_pos() / 1000
 
     def update_song_position(self, time):
@@ -93,3 +97,6 @@ class MusicControl:
 
         else:
             self.pause_time = time
+
+    def update_volume(self, volume):
+        mixer.music.set_volume(volume)

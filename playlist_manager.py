@@ -8,7 +8,18 @@ class PlaylistManager:
         self.Default = []
         # Initialize `playlists` as a dictionary to store playlists with (id, song name)
         self.playlists = {"Default": []}
-        self.load_default_from_folder(r"C:\Users\Diana\Music")
+        #self.load_default_from_folder(r"C:\Users\Diana\Music")
+
+        # Determină calea implicită pentru folderul "Music" din directorul utilizatorului
+        user_profile = os.environ.get("USERPROFILE", "")
+        music_folder = os.path.join(user_profile, "Music") if user_profile else None
+
+        # Verifică dacă folderul implicit există
+        if music_folder and os.path.exists(music_folder):
+            folder_path = music_folder
+            # Încarcă fișierele MP3 din folderul selectat
+            if folder_path:
+                self.load_default_from_folder(folder_path)
 
     def load_default_from_folder(self, folder_path):
         """Populează lista Default și playlist-ul cu fișiere .mp3 dintr-un folder dat."""
@@ -26,12 +37,13 @@ class PlaylistManager:
                             self.playlists["Default"].append((song_id, song_name))
                             print(f"Loaded: ID={song_id}, Name={song_name}")
             # Sortează lista după numele fișierelor
-            self.Default = sorted(self.Default)
-            self.playlists["Default"] = sorted(self.playlists["Default"], key=lambda x: x[1])
+            # self.Default = sorted(self.Default)
+            # self.playlists["Default"] = sorted(self.playlists["Default"], key=lambda x: x[1])
         except Exception as e:
             print(f"Error loading songs from folder: {e}")
 
     def create_playlist(self, name):
+        """Creeaza un playlist nou"""
         if name in self.playlists:
             print(f"Playlist {name} already exists")
             return False
@@ -41,7 +53,7 @@ class PlaylistManager:
             return True
 
     def add_song_to_default(self):
-        """Lets the user upload .mp3 files and adds them to the `Default` playlist."""
+        """Permite utilizatorului sa adauge cantece"""
         file_paths = filedialog.askopenfilenames(
             title="Selectează fișiere MP3",
             filetypes=[("MP3 Files", "*.mp3"), ("All Files", "*.*")]
@@ -61,10 +73,6 @@ class PlaylistManager:
         self.Default = sorted(self.Default)
         self.playlists['Default'] = sorted(self.playlists['Default'], key=lambda x: x[1])
 
-    def display_default(self):
-        print(
-            f"lungimea playlistului:{len(self.playlists["Default"])}\nlungimea default: {len(self.Default)}")
-
     def get_song(self, index, playlist):
         """Returnează melodia de la un index specificat din playlist"""
         if 0 <= index < len(self.playlists[playlist]):
@@ -76,6 +84,7 @@ class PlaylistManager:
             return None
 
     def get_next_song(self, index, playlist):
+        """Returneaza melodia urmatoare"""
         index = index + 1
         if index == len(self.playlists[playlist]): # verify if we reached the end of the playlist
             index = 0
