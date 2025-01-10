@@ -8,6 +8,28 @@ class PlaylistManager:
         self.Default = []
         # Initialize `playlists` as a dictionary to store playlists with (id, song name)
         self.playlists = {"Default": []}
+        self.load_default_from_folder(r"C:\Users\Diana\Music")
+
+    def load_default_from_folder(self, folder_path):
+        """Populează lista Default și playlist-ul cu fișiere .mp3 dintr-un folder dat."""
+        try:
+            # Parcurge toate fișierele din folder
+            for root, _, files in os.walk(folder_path):
+                for file in files:
+                    if file.lower().endswith(".mp3"):
+                        full_path = os.path.join(root, file)
+                        if full_path not in self.Default:
+                            self.Default.append(full_path)
+                            song_id = len(self.Default) - 1  # Index of the newly added song
+                            song_name = os.path.basename(full_path)  # Extract the file name
+                            # Add (id, song_name) to the "Default" playlist
+                            self.playlists["Default"].append((song_id, song_name))
+                            print(f"Loaded: ID={song_id}, Name={song_name}")
+            # Sortează lista după numele fișierelor
+            self.Default = sorted(self.Default)
+            self.playlists["Default"] = sorted(self.playlists["Default"], key=lambda x: x[1])
+        except Exception as e:
+            print(f"Error loading songs from folder: {e}")
 
     def create_playlist(self, name):
         if name in self.playlists:
@@ -38,7 +60,6 @@ class PlaylistManager:
                     print(f"Song {file_path} already exists in Default.")
         self.Default = sorted(self.Default)
         self.playlists['Default'] = sorted(self.playlists['Default'], key=lambda x: x[1])
-        print(f"Length of 'Default' playlist: {len(self.Default)} \ {len(self.playlists['Default'])}")
 
     def display_default(self):
         print(
