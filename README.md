@@ -9,7 +9,7 @@ Pentru instalarea proiectului:
 3. Rulati main
 4. Bucurati-va de muzica :)
 
-In testarea proiectului noi ne-am utilizat de acest playlist pe care vi-l recomandam:
+In testarea proiectului noi ne-am utilizat de acest playlist pe care vi-l recomandam cu drag:
   Voltaj - 20 ani;
   Voltaj - Albinuta;
   Voltaj - De la capat;
