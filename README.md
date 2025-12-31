@@ -19,7 +19,7 @@ The core engineering challenge was implementing a **multithreaded architecture**
 
 ## 🛠️ Technologies Used
 * **Language:** Python 3.x
-* **GUI Framework:** [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) (Modern wrapper for Tkinter)
+* **GUI Framework:** CustomTkinter
 * **Audio Engine:** `pygame.mixer`
 * **Concurrency:** `threading` module
 
@@ -27,10 +27,6 @@ The core engineering challenge was implementing a **multithreaded architecture**
 To run this application locally, you will need Python installed.
 
 1.  **Clone the repository**
-    ```bash
-    git clone [https://github.com/yourusername/mp3-player-python.git](https://github.com/yourusername/mp3-player-python.git)
-    cd mp3-player-python
-    ```
 
 2.  **Install Dependencies**
     ```bash
