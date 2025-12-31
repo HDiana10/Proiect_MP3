@@ -1,17 +1,47 @@
-----------------README--------------
+# 🎵 Python MP3 Player
 
+**Status:** Completed (University Project)  
+**Tech Stack:** Python, CustomTkinter, Pygame
 
-Proiect MP3 player, functii de baza de redare a muzicii si creare de playlisturi.
+## 📄 Project Overview
+This application is a feature-rich desktop media player designed to provide a modern user experience for local audio playback. Built using **Python**, it utilizes **CustomTkinter** for a polished, dark-mode-ready GUI and **Pygame** for the audio mixing engine.
 
-Pentru instalarea proiectului:
-1. Clonati proiectul.
-2. Deschideti proiectul intr-un IDE
-3. Rulati main
-4. Bucurati-va de muzica :)
+The core engineering challenge was implementing a **multithreaded architecture** to decouple the UI event loop from the audio processing, ensuring the interface remains responsive during playback updates.
 
-In testarea proiectului noi ne-am utilizat de acest playlist pe care vi-l recomandam cu drag:
-  Voltaj - 20 ani;
-  Voltaj - Albinuta;
-  Voltaj - De la capat;
-  Voltaj - De maine;
-  Voltaj - Pic Pic;
+## ✨ Key Features
+* **Modern GUI:** Designed with `customtkinter` for a responsive, high-DPI compatible interface.
+* **Multithreaded Performance:** Uses Python's `threading` module to handle real-time timer updates and progress bar synchronization without freezing the main application loop.
+* **Playlist Logic:** Custom algorithms for:
+    * **Shuffle:** Randomized queue generation without repetition.
+    * **Repeat:** Toggle between "Repeat One" and "Repeat All" states.
+    * **Queue Management:** Dynamic addition and removal of tracks.
+* **File Handling:** specific support for `.mp3` file parsing and metadata retrieval.
+
+## 🛠️ Technologies Used
+* **Language:** Python 3.x
+* **GUI Framework:** [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) (Modern wrapper for Tkinter)
+* **Audio Engine:** `pygame.mixer`
+* **Concurrency:** `threading` module
+
+## 🚀 How to Run
+To run this application locally, you will need Python installed.
+
+1.  **Clone the repository**
+    ```bash
+    git clone [https://github.com/yourusername/mp3-player-python.git](https://github.com/yourusername/mp3-player-python.git)
+    cd mp3-player-python
+    ```
+
+2.  **Install Dependencies**
+    ```bash
+    pip install customtkinter pygame
+    ```
+
+3.  **Run the Application**
+    ```bash
+    python main.py
+    ```
+
+## 🔮 Future Improvements
+* Add an equalizer visualization using Fast Fourier Transform (FFT) on the audio stream.
+* Package the application as an executable (`.exe`) using PyInstaller.
